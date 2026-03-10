@@ -2,148 +2,197 @@ import pygame
 import random
 import sys
 
-# Initialize pygame
 pygame.init()
 
-# Screen setup
+# Window
 WIDTH, HEIGHT = 400, 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Flappy Bird")
+
 clock = pygame.time.Clock()
-font = pygame.font.SysFont('Arial', 30)
+font = pygame.font.SysFont("Arial", 30)
 
 # Colors
-WHITE = (255, 255, 255)
-BLUE = (0, 0, 255)
-GREEN = (0, 255, 0)
+SKY = (135, 206, 235)
+GREEN = (0, 200, 0)
+BLUE = (50, 80, 255)
 BLACK = (0, 0, 0)
-SKY_BLUE = (135, 206, 235)
 
 # Game settings
-GRAVITY = 0.25
-BIRD_JUMP = -7
+GRAVITY = 0.4
+JUMP = -8
+PIPE_GAP = 180
 PIPE_SPEED = 3
-PIPE_GAP = 200
-PIPE_FREQUENCY = 1500  # milliseconds
+PIPE_WIDTH = 70
+PIPE_DELAY = 1500
+
 
 class Bird:
+
     def __init__(self):
         self.x = 100
         self.y = HEIGHT // 2
-        self.velocity = 0
+        self.vel = 0
         self.radius = 15
-    
+
     def jump(self):
-        self.velocity = BIRD_JUMP
-    
+        self.vel = JUMP
+
     def update(self):
-        self.velocity += GRAVITY
-        self.y += self.velocity
-        if self.y < 0:
-            self.y = 0
-        if self.y > HEIGHT:
-            self.y = HEIGHT
-    
+        self.vel += GRAVITY
+        self.y += self.vel
+
     def draw(self):
         pygame.draw.circle(screen, BLUE, (self.x, int(self.y)), self.radius)
 
+    def rect(self):
+        return pygame.Rect(
+            self.x - self.radius,
+            self.y - self.radius,
+            self.radius * 2,
+            self.radius * 2
+        )
+
+
 class Pipe:
+
     def __init__(self):
         self.x = WIDTH
-        self.top_height = random.randint(50, HEIGHT - 250)
-        self.bottom_height = HEIGHT - self.top_height - PIPE_GAP
-        self.width = 60
+        self.height = random.randint(120, 380)
         self.passed = False
-    
+
     def update(self):
         self.x -= PIPE_SPEED
-    
+
     def draw(self):
-        pygame.draw.rect(screen, GREEN, (self.x, 0, self.width, self.top_height))
-        pygame.draw.rect(screen, GREEN, (self.x, HEIGHT - self.bottom_height, self.width, self.bottom_height))
-    
+
+        # Top pipe
+        pygame.draw.rect(
+            screen,
+            GREEN,
+            (self.x, 0, PIPE_WIDTH, self.height)
+        )
+
+        # Bottom pipe
+        pygame.draw.rect(
+            screen,
+            GREEN,
+            (self.x, self.height + PIPE_GAP, PIPE_WIDTH, HEIGHT)
+        )
+
     def collide(self, bird):
-        bird_mask = pygame.Rect(bird.x - bird.radius, bird.y - bird.radius, bird.radius * 2, bird.radius * 2)
-        top_pipe = pygame.Rect(self.x, 0, self.width, self.top_height)
-        bottom_pipe = pygame.Rect(self.x, HEIGHT - self.bottom_height, self.width, self.bottom_height)
-        return bird_mask.colliderect(top_pipe) or bird_mask.colliderect(bottom_pipe)
+
+        bird_rect = bird.rect()
+
+        top_rect = pygame.Rect(self.x, 0, PIPE_WIDTH, self.height)
+
+        bottom_rect = pygame.Rect(
+            self.x,
+            self.height + PIPE_GAP,
+            PIPE_WIDTH,
+            HEIGHT
+        )
+
+        return bird_rect.colliderect(top_rect) or bird_rect.colliderect(bottom_rect)
+
+
+def draw_score(score):
+
+    text = font.render(f"Score: {score}", True, BLACK)
+    screen.blit(text, (10, 10))
+
 
 def game():
+
     bird = Bird()
     pipes = []
+
     score = 0
     last_pipe = pygame.time.get_ticks()
-    running = True
 
-    while running:
+    while True:
+
         clock.tick(60)
-        
-        # Handle events (keyboard/mouse)
+
         for event in pygame.event.get():
+
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
                     bird.jump()
-        
-        # Generate pipes
-        current_time = pygame.time.get_ticks()
-        if current_time - last_pipe > PIPE_FREQUENCY:
+
+        now = pygame.time.get_ticks()
+
+        if now - last_pipe > PIPE_DELAY:
             pipes.append(Pipe())
-            last_pipe = current_time
-        
-        # Update bird
+            last_pipe = now
+
         bird.update()
-        
-        # Update pipes
+
         for pipe in pipes[:]:
+
             pipe.update()
-            
+
             if pipe.collide(bird):
-                running = False
-            
-            if pipe.x + pipe.width < bird.x and not pipe.passed:
+                return score
+
+            if pipe.x + PIPE_WIDTH < bird.x and not pipe.passed:
                 pipe.passed = True
                 score += 1
-            
-            if pipe.x < -pipe.width:
+
+            if pipe.x < -PIPE_WIDTH:
                 pipes.remove(pipe)
-        
-        # Draw everything
-        screen.fill(SKY_BLUE)
+
+        if bird.y > HEIGHT or bird.y < 0:
+            return score
+
+        screen.fill(SKY)
+
         for pipe in pipes:
             pipe.draw()
+
         bird.draw()
-        
-        # Display score
-        score_text = font.render(f"Score: {score}", True, BLACK)
-        screen.blit(score_text, (10, 10))
-        
+        draw_score(score)
+
         pygame.display.update()
-    
-    # Game over screen
-    screen.fill(SKY_BLUE)
-    game_over_text = font.render(f"Game Over! Score: {score}", True, BLACK)
-    restart_text = font.render("Press R to restart, Q to quit", True, BLACK)
-    screen.blit(game_over_text, (WIDTH//2 - game_over_text.get_width()//2, HEIGHT//2 - 50))
-    screen.blit(restart_text, (WIDTH//2 - restart_text.get_width()//2, HEIGHT//2 + 50))
-    pygame.display.update()
-    
-    # Wait for player input
-    waiting = True
-    while waiting:
+
+
+def game_over(score):
+
+    while True:
+
+        screen.fill(SKY)
+
+        text1 = font.render(f"Game Over! Score: {score}", True, BLACK)
+        text2 = font.render("Press R to Restart", True, BLACK)
+        text3 = font.render("Press Q to Quit", True, BLACK)
+
+        screen.blit(text1, (WIDTH//2 - text1.get_width()//2, 250))
+        screen.blit(text2, (WIDTH//2 - text2.get_width()//2, 300))
+        screen.blit(text3, (WIDTH//2 - text3.get_width()//2, 340))
+
+        pygame.display.update()
+
         for event in pygame.event.get():
+
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+
             if event.type == pygame.KEYDOWN:
+
                 if event.key == pygame.K_r:
-                    waiting = False
-                    game()  # Restart
+                    return
+
                 if event.key == pygame.K_q:
                     pygame.quit()
                     sys.exit()
 
-if __name__ == "__main__":
-    game()
+
+while True:
+
+    score = game()
+    game_over(score)
