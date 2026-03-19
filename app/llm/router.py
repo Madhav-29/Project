@@ -1,10 +1,15 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
+
+from dotenv import load_dotenv
 
 from app.llm.azure_openai_client import AzureOpenAIChatClient
 from app.llm.base import LLMClient
 from app.llm.openai_client import OpenAIChatClient
+
+load_dotenv(Path(__file__).resolve().parents[2] / ".env", override=True)
 
 
 class StubLLMClient(LLMClient):
