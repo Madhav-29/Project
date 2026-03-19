@@ -1,248 +1,171 @@
-# Clinical Gap Intelligence
+# Clinical AI Platform
 
-Enterprise-style clinical AI assistant for synthetic EHR data, patient-specific RAG, vector search, transparent rule-based gap detection, human review workflow, and OpenAI/Azure OpenAI synthesis.
+AI Assistant for Clinical Gap Intelligence across synthetic patient records.
 
-This project uses synthetic data only. Do not use real PHI.
+This project pairs a FastAPI backend with a React dashboard for patient-specific care gap analysis, documentation review, revenue and quality risk triage, evidence retrieval, timeline review, and human-in-the-loop audit capture. The platform is designed around auditable RAG: every answer includes retrieved context, rule outputs, model status, latency, and review metadata.
 
-## Business Problem
+For demonstration with synthetic data only.
 
-Care managers, quality reviewers, coders, and revenue integrity teams often need to reconcile patient data across conditions, labs, vitals, medications, encounters, procedures, and documentation history. This project demonstrates how an assistant can answer patient-specific clinical operations questions while grounding responses in retrieved evidence, timeline events, and transparent rules.
+## Product Flow
+
+1. Select or search a synthetic patient in the React workspace.
+2. Ask a clinical gap intelligence question.
+3. The backend builds patient context, retrieves relevant evidence, runs clinical rules, generates an answer, validates grounding, and logs audit metadata.
+4. Reviewers can mark gaps as `needs_review`, `accepted`, or `dismissed`.
+5. Swagger remains available for direct API inspection at `/docs`.
 
 ## Architecture
 
-```text
-Clinician question
-      |
-      v
-FastAPI /ask
-      |
-      v
-PatientContextTool -> TimelineTool -> RetrieverTool -> ClinicalRulesTool
-      |                  |              |                 |
-      v                  v              v                 v
-Synthetic profile   Timeline events   Hybrid RAG       Care/doc/risk gaps
-      \____________________|______________|_________________/
-                           v
-                  AnswerGeneratorTool
-                           |
-                           v
-                  SafetyValidatorTool
-                           |
-                           v
-          Assistant answer + evidence + audit trail
+```mermaid
+flowchart LR
+    React["React dashboard"] --> API["FastAPI contracts"]
+    Swagger["Swagger /docs"] --> API
+    API --> Agent["Assistant tool router"]
+    Agent --> Patient["Patient context tool"]
+    Agent --> Timeline["Timeline tool"]
+    Agent --> Retriever["Hybrid RAG retriever"]
+    Agent --> Rules["Clinical rules"]
+    Agent --> LLM["OpenAI/Azure OpenAI synthesis"]
+    Retriever --> Vector["VectorStoreBase"]
+    Vector --> Local["Local JSON vector store"]
+    Vector --> Azure["Azure AI Search adapter boundary"]
+    API --> Audit["HITL review audit"]
 ```
 
-## Data Flow
+## Backend Contract
 
-1. Synthea-style CSV files or bundled sample data are loaded.
-2. Patient records are normalized into chronological timeline events.
-3. Timeline events become clinical documents with metadata such as `patient_id`, `source_type`, `date`, `code`, `description`, and `category`.
-4. Documents are chunked, embedded, and stored in a local JSON vector-store adapter.
-5. `/ask` filters retrieval by `patient_id`, combines vector similarity with keyword matching, runs clinical rules, generates a grounded answer, validates it, and returns audit metadata.
+Primary endpoint:
 
-## RAG Design
-
-- Patient-specific retrieval always filters by `patient_id`.
-- Hybrid retrieval combines vector similarity with keyword/document metadata matching.
-- Supporting evidence is returned directly in the `/ask` response.
-- The vector-store boundary is local today and can be replaced by FAISS, ChromaDB, or Azure AI Search later.
-
-## LLM Orchestration
-
-The assistant uses a clean custom orchestration loop inspired by multi-step agent patterns:
-
-- `PatientContextTool`: loads synthetic patient profile.
-- `TimelineTool`: builds timeline events.
-- `RetrieverTool`: retrieves patient-specific evidence.
-- `ClinicalRulesTool`: runs care gap, documentation, and revenue-quality rules.
-- `AnswerGeneratorTool`: calls OpenAI or Azure OpenAI when configured.
-- `SafetyValidatorTool`: checks grounding signals.
-- `AuditLoggerTool`: records retrieval strategy, model status, fired rules, confidence, and latency.
-
-When model credentials are not configured, `/ask` returns:
-
-```text
-AI Assistant summary unavailable. Configure model credentials to enable generated summaries.
+```bash
+curl -X POST http://localhost:8000/ask \
+  -H "Content-Type: application/json" \
+  -d "{\"patient_id\":\"p001\",\"question\":\"What care gaps exist for this patient?\",\"data_source\":\"synthea\"}"
 ```
 
-## Rule Engine
+`/ask` returns:
 
-Implemented transparent evidence-backed rules include:
+- `patient_summary`
+- `care_gaps`, `documentation_gaps`, `revenue_quality_risks`
+- `recommended_actions`
+- `supporting_evidence` and `retrieved_context`
+- `timeline_events` and `timeline_summary`
+- `audit` with request ID, timestamp, retrieval strategy, retrieved chunk count, rules fired, model status, and latency
 
-- Diabetes HbA1c monitoring
-- Diabetes uncontrolled HbA1c >= 8
-- Diabetes retinal/eye exam
-- Hypertension BP monitoring
-- CKD eGFR monitoring
-- Obesity/BMI follow-up
-- COPD follow-up/spirometry
-- Older adult annual wellness visit
-- Medication review due
-- Chronic condition not reassessed in current year
-- Revenue and quality recapture risk signals
+Additional endpoints:
 
-## Human Review Workflow
+- `GET /patients/search`
+- `GET /index/status`
+- `POST /review/gap`
+- `POST /index/build`
+- `GET /live/overview`
+- `POST /analyze-patient`
 
-Healthcare-appropriate review endpoints support marking a gap as:
-
-- `needs_review`
-- `accepted`
-- `dismissed`
-
-Reviewer, note, timestamp, patient ID, and gap ID are stored in a local JSON audit log under `data/audit/`.
-
-## Setup
+## Local Setup
 
 ```bash
 python -m venv .venv
-. .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m uvicorn app.api.main:app --host 127.0.0.1 --port 8000
 ```
 
-Windows PowerShell:
-
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-Copy-Item .env.example .env
-```
-
-## Environment Variables
-
-```env
-OPENAI_API_KEY=
-OPENAI_MODEL=gpt-4.1-mini
-AZURE_OPENAI_ENDPOINT=
-AZURE_OPENAI_API_KEY=
-AZURE_OPENAI_DEPLOYMENT_NAME=
-AZURE_OPENAI_API_VERSION=2024-10-21
-```
-
-## Run Locally
+React frontend:
 
 ```bash
-python scripts/build_index.py
-uvicorn app.api.main:app --reload
+cd frontend
+npm install
+npm run dev
 ```
 
-Swagger API: `http://localhost:8000/docs`
-ReDoc: `http://localhost:8000/redoc`
+Open:
 
-Windows helper script:
+- React app: `http://127.0.0.1:8501`
+- Swagger: `http://127.0.0.1:8000/docs`
+- Health: `http://127.0.0.1:8000/health`
+
+PowerShell helper:
 
 ```powershell
 .\scripts\start_local.ps1
 ```
 
-If port `8000` is already busy, the helper picks the next available API port and prints the Swagger URL.
+The helper falls back to the next available API or frontend port if the default port is busy.
 
-Optional Streamlit UI:
+## Configuration
 
-```bash
-streamlit run frontend/streamlit_app.py
+Use `.env` for local secrets. Do not commit `.env`.
+
+```env
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-4.1-mini
+AZURE_OPENAI_API_KEY=
+AZURE_OPENAI_ENDPOINT=
+AZURE_OPENAI_DEPLOYMENT=
 ```
 
-## API Examples
+When model credentials are not configured, the assistant returns a deterministic fallback answer with the same evidence and audit contract.
+
+## Docker
 
 ```bash
-curl http://localhost:8000/health
-curl http://localhost:8000/patients
+docker compose up --build
 ```
+
+Services:
+
+- API: `http://localhost:8000`
+- React frontend: `http://localhost:8501`
+
+The Docker ignore file excludes local secrets, audit logs, cached vector indexes, virtual environments, and frontend build artifacts.
+
+## Retrieval And RAG Quality
+
+- `VectorStoreBase` defines the retrieval boundary.
+- `LocalJSONVectorStore` supports deterministic local development.
+- `FaissVectorStore`, `ChromaVectorStore`, and `AzureAISearchVectorStore` are adapter boundaries for production vector infrastructure.
+- `HybridRetriever` combines vector similarity and lexical matches filtered by patient ID.
+- The response exposes retrieved context and audit metadata so frontend and tests can inspect grounding.
+
+Run the lightweight evaluation harness against a running API:
 
 ```bash
-curl -X POST http://localhost:8000/ask \
-  -H "Content-Type: application/json" \
-  -d '{"patient_id":"p001","question":"What care gaps exist for this patient?","data_source":"synthea"}'
+python evals/run_eval.py --base-url http://127.0.0.1:8000
 ```
 
-```bash
-curl -X POST http://localhost:8000/patients/p001/reviews \
-  -H "Content-Type: application/json" \
-  -d '{"gap_id":"care_gap:Diabetes HbA1c monitoring due","status":"needs_review","reviewer":"quality_reviewer","note":"Review in chart prep."}'
-```
-
-## Synthea Data
-
-Place generated Synthea CSV files in `data/synthea/csv`.
-
-Expected files include:
-
-- `patients.csv`
-- `conditions.csv`
-- `observations.csv`
-- `medications.csv`
-- `encounters.csv`
-- `procedures.csv`
-- `careplans.csv`
-
-If Synthea data is absent, bundled sample data is used.
-
-## Evaluation
-
-Small evaluation prompts live in `evals/questions.json`. Tests cover:
-
-- Synthea/sample loading
-- Timeline creation
-- Rule detection
-- Patient-specific retrieval
-- `/ask` response contract
-- Grounding fallback behavior
-- Human review audit events
-
-Run:
+## Tests
 
 ```bash
 pytest
 ```
 
-Smoke test a running API:
+Coverage includes:
 
-```bash
-python scripts/smoke_test.py --base-url http://127.0.0.1:8000
-```
+- API health and `/ask` response contract
+- patient search and index status contracts
+- retrieval patient filtering
+- clinical rules, timeline, and ingestion behavior
+- React frontend contract labels and API integration points
+- human review audit endpoint
 
-## Docker
+## Frontend
 
-```bash
-cp .env.example .env
-docker compose up --build
-```
+The React workspace includes:
 
-API: `http://localhost:8000/docs`
-Frontend: `http://localhost:8501`
+- sidebar patient search, filters, and demographics
+- professional status header
+- clinical question workspace with suggested prompts
+- KPI cards
+- tabs for AI Answer, Care Gaps, Documentation, Revenue & Quality, Evidence, Patient Timeline, and Audit Trail
+- loading, empty, and error states
+- human-in-the-loop gap review actions
 
-## Screenshots
+Screenshot placeholders:
 
-Add screenshots here:
+- `docs/screenshots/react-dashboard.png`
+- `docs/screenshots/swagger-ask-contract.png`
 
-- Swagger `/ask` request and response
-- Streamlit assistant question flow
-- Evidence and audit trail tabs
-- Review workflow endpoint
+## Security Notes
 
-## Azure Deployment Roadmap
-
-- Replace local vector JSON with Azure AI Search.
-- Persist normalized data and review events in Azure PostgreSQL.
-- Add Azure Container Apps or App Service deployment.
-- Add managed identity and Key Vault for secrets.
-- Add structured telemetry with Application Insights.
-- Add evaluator jobs for retrieval relevance and groundedness.
-
-## Limitations
-
-- Not a medical device.
 - Synthetic data only.
-- Rule logic is transparent but simplified.
-- LLM output is grounded by retrieved context and rules but still requires professional review.
-- No real PHI should be stored or processed.
-
-## Future Improvements
-
-- FHIR ingestion and terminology normalization.
-- Measure-specific logic for HEDIS, CMS Stars, RAF, and payer contracts.
-- Role-based access control and tenant isolation.
-- Full LangGraph implementation for stateful orchestration.
-- Richer evaluation harness for completeness, retrieval relevance, and unsupported-claim detection.
+- No API keys or environment files should be committed.
+- Local vector indexes and audit event logs are ignored.
+- Review outputs before operational use.

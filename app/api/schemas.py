@@ -64,6 +64,10 @@ class ReviewRequest(BaseModel):
     note: str = Field("", examples=["Confirmed for quality team follow-up."])
 
 
+class ReviewGapRequest(ReviewRequest):
+    patient_id: str = Field(..., examples=["p001"])
+
+
 class ReviewEvent(BaseModel):
     id: str
     patient_id: str
@@ -91,25 +95,47 @@ class RetrievedContext(BaseModel):
     score: float | None = None
 
 
+class AuditInfo(BaseModel):
+    request_id: str
+    timestamp: str
+    data_source: str = "synthea"
+    retrieval_strategy: str = "hybrid/vector"
+    top_k: int = 8
+    retrieved_chunks: int = 0
+    rules_fired: list[str] = Field(default_factory=list)
+    model_status: Literal["enabled", "fallback"]
+    latency_ms: int = 0
+    model: str | None = None
+    confidence: Confidence = "low"
+    grounded: bool = False
+
+
 class AskResponse(BaseModel):
     model_config = ConfigDict(json_schema_extra={
         "example": {
             "patient_id": "p001",
             "question": "What care gaps exist for this patient?",
             "answer": "The patient has care gaps related to diabetes monitoring, CKD monitoring, and medication review. Supporting evidence includes active chronic conditions and dated observations from the patient timeline.",
+            "patient_summary": "Evelyn Carter (synthetic patient p001), age 65, gender female. Known conditions: Type 2 diabetes.",
             "care_gaps": [],
             "documentation_gaps": [],
             "revenue_quality_risks": [],
             "supporting_evidence": [],
+            "retrieved_context": [],
+            "timeline_events": [],
             "recommended_actions": ["Clinician to review: Diabetes HbA1c monitoring due."],
             "timeline_summary": "12 timeline events across condition, encounter, medication, observation, and procedure.",
             "model_status": "enabled",
             "audit": {
                 "request_id": "req_20260531_000000",
+                "timestamp": "2026-05-31T00:00:00+00:00",
+                "data_source": "synthea",
                 "retrieval_strategy": "hybrid",
                 "top_k": 8,
+                "retrieved_chunks": 8,
                 "model": "gpt-4.1-mini",
                 "rules_fired": ["Diabetes HbA1c monitoring due"],
+                "model_status": "enabled",
                 "confidence": "high",
                 "grounded": True,
                 "latency_ms": 850,
@@ -120,14 +146,17 @@ class AskResponse(BaseModel):
     patient_id: str
     question: str
     answer: str = Field(..., description="Evidence-grounded assistant answer. Falls back to a clear configuration message when model credentials are unavailable.")
+    patient_summary: str
     care_gaps: list[Gap]
     documentation_gaps: list[Gap]
     revenue_quality_risks: list[Gap]
     supporting_evidence: list[RetrievedContext]
+    retrieved_context: list[RetrievedContext]
+    timeline_events: list[dict[str, Any]] = Field(default_factory=list)
     recommended_actions: list[str]
     timeline_summary: str
     model_status: Literal["enabled", "fallback"]
-    audit: dict[str, Any]
+    audit: AuditInfo
 
 
 class AnalyzeResponse(BaseModel):

@@ -204,7 +204,7 @@ def evaluate_revenue_quality_risks(care_gaps: list[Gap], documentation_gaps: lis
             risks.append(_gap(
                 f"Quality or risk-adjustment exposure: {gap.title}",
                 gap.reason,
-                "May affect measure closure, documentation defensibility, or risk adjustment review. Requires clinical validation.",
+                "May affect measure closure, documentation defensibility, or risk adjustment review. Prioritize for reviewer sign-off before operational action.",
                 "high",
                 gap.time_window,
                 gap.supporting_evidence,

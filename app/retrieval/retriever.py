@@ -3,13 +3,18 @@ from __future__ import annotations
 from pathlib import Path
 
 from app.retrieval.embeddings import EmbeddingProvider, get_embedding_provider
-from app.retrieval.vector_store import LocalVectorStore
+from app.retrieval.vector_store import LocalJSONVectorStore, VectorStoreBase
 
 
 class HybridRetriever:
-    def __init__(self, index_path: Path, embedding_provider: EmbeddingProvider | None = None) -> None:
+    def __init__(
+        self,
+        index_path: Path,
+        embedding_provider: EmbeddingProvider | None = None,
+        vector_store: VectorStoreBase | None = None,
+    ) -> None:
         self.embedding_provider = embedding_provider or get_embedding_provider()
-        self.store = LocalVectorStore(index_path)
+        self.store = vector_store or LocalJSONVectorStore(index_path)
 
     def retrieve(self, question: str, patient_id: str, top_k: int = 6) -> list[dict]:
         query_embedding = self.embedding_provider.embed_texts([question])[0]

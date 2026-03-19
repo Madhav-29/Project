@@ -1,0 +1,12 @@
+.git
+.github
+.venv
+__pycache__
+.pytest_cache
+.env
+data/vector_index
+data/audit
+data/synthea/csv/*.csv
+frontend/node_modules
+frontend/dist
+*.pyc

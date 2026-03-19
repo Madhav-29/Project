@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import json
+import logging
 from pathlib import Path
 
 from app.api.schemas import AnalyzeResponse, AskResponse, RetrievedContext
@@ -17,6 +19,7 @@ from app.timeline.event_builder import build_patient_timeline
 
 INDEX_PATH = PROJECT_ROOT / "data" / "vector_index" / "index.json"
 ANALYSIS_HISTORY: list[dict] = []
+logger = logging.getLogger(__name__)
 
 
 def patient_summary_text(patient: dict) -> str:
@@ -49,6 +52,20 @@ def build_index() -> int:
     embeddings = provider.embed_texts([doc["text"] for doc in documents]) if documents else []
     LocalVectorStore(INDEX_PATH).add(documents, embeddings)
     return len(documents)
+
+
+def index_status() -> dict:
+    records = []
+    if INDEX_PATH.exists():
+        records = json.loads(INDEX_PATH.read_text(encoding="utf-8"))
+    return {
+        "ready": INDEX_PATH.exists(),
+        "path": str(INDEX_PATH),
+        "documents_indexed": len(records),
+        "store_type": "local_json",
+        "retrieval_strategy": "hybrid/vector",
+        "embedding_provider": get_embedding_provider().__class__.__name__,
+    }
 
 
 def live_overview() -> dict:
@@ -107,6 +124,13 @@ def analyze_patient(patient_id: str, question: str, use_llm: bool = True) -> Ana
         "ran_at": datetime.now(timezone.utc).isoformat(),
     })
     del ANALYSIS_HISTORY[:-25]
+    logger.info(
+        "structured_analysis_completed patient_id=%s care_gaps=%s documentation_gaps=%s risks=%s",
+        patient_id,
+        len(response.care_gaps),
+        len(response.documentation_gaps),
+        len(response.revenue_quality_risks),
+    )
     return response
 
 
@@ -125,4 +149,12 @@ def ask_patient(patient_id: str, question: str) -> AskResponse:
         "ran_at": datetime.now(timezone.utc).isoformat(),
     })
     del ANALYSIS_HISTORY[:-25]
+    logger.info(
+        "assistant_history_recorded request_id=%s patient_id=%s care_gaps=%s documentation_gaps=%s risks=%s",
+        response.audit.request_id,
+        patient_id,
+        len(response.care_gaps),
+        len(response.documentation_gaps),
+        len(response.revenue_quality_risks),
+    )
     return response

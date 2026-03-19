@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
+import logging
 from time import perf_counter
 from uuid import uuid4
 
@@ -13,6 +15,9 @@ from app.rules.rule_registry import run_all_rules
 from app.services.analysis_service import INDEX_PATH, build_index, patient_summary_text, timeline_summary_text
 from app.services.ingestion_service import repository
 from app.timeline.event_builder import build_patient_timeline
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -101,10 +106,14 @@ class AuditLoggerTool:
         confidence = "high" if "high" in priorities and state.grounded else "medium" if state.grounded else "low"
         return {
             "request_id": state.request_id,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "data_source": "synthea",
             "retrieval_strategy": "hybrid",
             "top_k": 8,
+            "retrieved_chunks": len(state.context or []),
             "model": configured_model_name() if state.model_status == "enabled" else "fallback",
             "rules_fired": [gap.title for gap in gaps],
+            "model_status": state.model_status,
             "confidence": confidence,
             "grounded": state.grounded,
             "latency_ms": int((perf_counter() - started_at) * 1000),
@@ -135,14 +144,27 @@ class ClinicalAssistantOrchestrator:
             state = tool.run(state)
         audit = self.audit_tool.run(state, started_at)
         actions = recommended_actions(state.care_gaps or [], state.documentation_gaps or [], state.risks or [])
+        evidence = [RetrievedContext(**hit) for hit in state.context or []]
+        logger.info(
+            "assistant_request_completed request_id=%s patient_id=%s retrieved_chunks=%s rules_fired=%s model_status=%s latency_ms=%s",
+            audit["request_id"],
+            patient_id,
+            audit["retrieved_chunks"],
+            len(audit["rules_fired"]),
+            audit["model_status"],
+            audit["latency_ms"],
+        )
         return AskResponse(
             patient_id=patient_id,
             question=question,
             answer=state.answer,
+            patient_summary=patient_summary_text(state.patient or {}),
             care_gaps=state.care_gaps or [],
             documentation_gaps=state.documentation_gaps or [],
             revenue_quality_risks=state.risks or [],
-            supporting_evidence=[RetrievedContext(**hit) for hit in state.context or []],
+            supporting_evidence=evidence,
+            retrieved_context=evidence,
+            timeline_events=state.timeline or [],
             recommended_actions=actions,
             timeline_summary=timeline_summary_text(state.timeline or []),
             model_status=state.model_status,  # type: ignore[arg-type]

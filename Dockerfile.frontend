@@ -1,11 +1,17 @@
-FROM python:3.11-slim
+FROM node:20-alpine
 
 WORKDIR /app
-ENV PYTHONPATH=/app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY frontend/package.json ./
+RUN npm install
 
-COPY . .
+COPY frontend/ ./
 
-CMD ["streamlit", "run", "frontend/streamlit_app.py", "--server.address", "0.0.0.0", "--server.port", "8501"]
+ARG VITE_API_URL=http://localhost:8000
+ENV VITE_API_URL=${VITE_API_URL}
+
+RUN npm run build
+
+EXPOSE 8501
+
+CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "8501"]

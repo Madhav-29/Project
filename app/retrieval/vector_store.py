@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import math
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 
 def cosine(a: list[float], b: list[float]) -> float:
@@ -11,8 +11,18 @@ def cosine(a: list[float], b: list[float]) -> float:
     return sum(x * y for x, y in zip(a, b)) / denom
 
 
-class LocalVectorStore:
-    """Small local JSON vector store. ChromaDB can replace this behind the same boundary."""
+class VectorStoreBase(Protocol):
+    records: list[dict[str, Any]]
+
+    def add(self, documents: list[dict[str, Any]], embeddings: list[list[float]]) -> None:
+        ...
+
+    def search(self, query_embedding: list[float], patient_id: str | None = None, top_k: int = 5) -> list[dict[str, Any]]:
+        ...
+
+
+class LocalJSONVectorStore:
+    """Small local JSON vector store used for deterministic local development."""
 
     def __init__(self, path: Path) -> None:
         self.path = path
@@ -34,3 +44,33 @@ class LocalVectorStore:
             score = cosine(query_embedding, record["embedding"])
             scored.append({key: value for key, value in record.items() if key != "embedding"} | {"score": score})
         return sorted(scored, key=lambda item: item["score"], reverse=True)[:top_k]
+
+
+class FaissVectorStore:
+    """Production adapter boundary for FAISS-backed retrieval."""
+
+    records: list[dict[str, Any]] = []
+
+    def __init__(self, *_args: Any, **_kwargs: Any) -> None:
+        raise NotImplementedError("FAISS vector store adapter is reserved for production deployment.")
+
+
+class ChromaVectorStore:
+    """Production adapter boundary for Chroma-backed retrieval."""
+
+    records: list[dict[str, Any]] = []
+
+    def __init__(self, *_args: Any, **_kwargs: Any) -> None:
+        raise NotImplementedError("Chroma vector store adapter is reserved for production deployment.")
+
+
+class AzureAISearchVectorStore:
+    """Production adapter boundary for Azure AI Search hybrid/vector retrieval."""
+
+    records: list[dict[str, Any]] = []
+
+    def __init__(self, *_args: Any, **_kwargs: Any) -> None:
+        raise NotImplementedError("Azure AI Search adapter is reserved for production deployment.")
+
+
+LocalVectorStore = LocalJSONVectorStore

@@ -48,3 +48,17 @@ def test_ask_response_contract(monkeypatch):
     assert payload["model_status"] in {"enabled", "fallback"}
     assert "answer" in payload
     assert "supporting_evidence" in payload
+    assert "patient_summary" in payload
+    assert "retrieved_context" in payload
+    assert "timeline_events" in payload
+    assert payload["audit"]["data_source"] == "synthea"
+
+
+def test_patient_search_and_index_status():
+    search = client.get("/patients/search?q=p001")
+    assert search.status_code == 200
+    assert search.json()[0]["id"] == "p001"
+
+    status = client.get("/index/status")
+    assert status.status_code == 200
+    assert {"ready", "documents_indexed", "retrieval_strategy", "store_type"}.issubset(status.json().keys())

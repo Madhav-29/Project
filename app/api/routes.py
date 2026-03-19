@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
-from app.api.schemas import AnalyzeRequest, AnalyzeResponse, AskRequest, AskResponse, IngestResponse, PatientSummary, ReviewEvent, ReviewRequest
+from app.api.schemas import AnalyzeRequest, AnalyzeResponse, AskRequest, AskResponse, IngestResponse, PatientSummary, ReviewEvent, ReviewGapRequest, ReviewRequest
 from app.ingestion.synthea_loader import SyntheaDataMissingError
-from app.services.analysis_service import analyze_patient, ask_patient, build_index, live_overview
+from app.services.analysis_service import analyze_patient, ask_patient, build_index, index_status, live_overview
 from app.services.audit_service import list_review_events, record_review_event
 from app.services.ingestion_service import repository
 
@@ -41,6 +41,39 @@ def live() -> dict:
 )
 def list_patients() -> list[dict]:
     return repository.patients()
+
+
+@router.get(
+    "/patients/search",
+    response_model=list[PatientSummary],
+    tags=["Patients"],
+    summary="Search synthetic patients",
+    description="Filters synthetic patient summaries by free text, condition text, age floor, and gender.",
+)
+def search_patients(
+    q: str = "",
+    condition: str = "",
+    min_age: int | None = None,
+    gender: str = "",
+) -> list[dict]:
+    patients = repository.patients()
+    if q:
+        needle = q.lower()
+        patients = [
+            patient
+            for patient in patients
+            if needle in patient.get("id", "").lower()
+            or needle in patient.get("name", "").lower()
+            or any(needle in value.lower() for value in patient.get("conditions", []))
+        ]
+    if condition:
+        needle = condition.lower()
+        patients = [patient for patient in patients if any(needle in value.lower() for value in patient.get("conditions", []))]
+    if min_age is not None:
+        patients = [patient for patient in patients if (patient.get("age") or 0) >= min_age]
+    if gender:
+        patients = [patient for patient in patients if patient.get("gender", "").lower() == gender.lower()]
+    return patients
 
 
 @router.get(
@@ -83,6 +116,16 @@ def index_build() -> dict:
     return {"documents_indexed": count}
 
 
+@router.get(
+    "/index/status",
+    tags=["Data Operations"],
+    summary="Inspect evidence index status",
+    description="Returns local evidence index readiness, document count, vector store type, and retrieval strategy.",
+)
+def get_index_status() -> dict:
+    return index_status()
+
+
 @router.post(
     "/analyze-patient",
     response_model=AnalyzeResponse,
@@ -113,6 +156,25 @@ def ask(request: AskRequest) -> AskResponse:
         return ask_patient(request.patient_id, request.question)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post(
+    "/review/gap",
+    response_model=ReviewEvent,
+    tags=["Assistant"],
+    summary="Record human-in-the-loop review for a gap",
+    description="Stores a local audit event for the selected synthetic patient and gap.",
+)
+def review_gap_by_body(request: ReviewGapRequest) -> ReviewEvent:
+    if not repository.patient(request.patient_id):
+        raise HTTPException(status_code=404, detail="Patient not found")
+    return record_review_event(
+        patient_id=request.patient_id,
+        gap_id=request.gap_id,
+        status=request.status,
+        reviewer=request.reviewer,
+        note=request.note,
+    )
 
 
 @router.post(
