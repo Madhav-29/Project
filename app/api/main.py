@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import router
-from app.observability.logging_config import configure_logging
+load_dotenv()
 
+from app.api.routes import router  # noqa: E402
+from app.observability.logging_config import configure_logging  # noqa: E402
 
 configure_logging()
 
