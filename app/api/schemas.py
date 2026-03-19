@@ -38,7 +38,6 @@ class AskRequest(BaseModel):
     patient_id: str
     question: str
     data_source: str = "synthea"
-    use_llm: bool = True
 
 
 class PatientSummary(BaseModel):
@@ -56,6 +55,19 @@ class RetrievedContext(BaseModel):
     date: str | None = None
     text: str
     score: float | None = None
+
+
+class AskResponse(BaseModel):
+    patient_id: str
+    question: str
+    answer: str
+    care_gaps: list[Gap]
+    documentation_gaps: list[Gap]
+    revenue_quality_risks: list[Gap]
+    supporting_evidence: list[RetrievedContext]
+    recommended_actions: list[str]
+    timeline_summary: str
+    model_status: Literal["enabled", "fallback"]
 
 
 class AnalyzeResponse(BaseModel):

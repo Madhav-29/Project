@@ -1,6 +1,6 @@
 # Clinical AI Platform
 
-Full-stack Clinical Gap Intelligence platform for synthetic patient data, transparent care-gap rules, local retrieval, and optional OpenAI or Azure OpenAI synthesis.
+An enterprise-style clinical AI assistant using synthetic EHR data, RAG, vector search, rule-based gap detection, and OpenAI/Azure OpenAI synthesis.
 
 This repository uses synthetic data only. Do not use real PHI.
 
@@ -22,10 +22,10 @@ Timeline Documents -> Chunking -> Embeddings -> Local Vector Index
                                    Hybrid Retriever
                                              |
                                              v
-FastAPI APIs + Live Status <------ RAG Orchestrator ---- OpenAI/Azure OpenAI
+FastAPI APIs + Assistant Status <- RAG Orchestrator ---- OpenAI/Azure OpenAI
     |
     v
-Simple Streamlit Live UI
+Clinical Gap Intelligence UI
 ```
 
 ## What It Does
@@ -36,7 +36,7 @@ Simple Streamlit Live UI
 - Indexes timeline evidence into a local vector store.
 - Retrieves evidence for patient questions.
 - Uses OpenAI or Azure OpenAI when configured for grounded synthesis.
-- Exposes FastAPI endpoints and a simple live Streamlit analyst UI.
+- Exposes FastAPI endpoints and a Streamlit clinical assistant UI.
 - Provides `/live/overview` for operational status, cohort count, index readiness, and recent analysis metadata.
 
 ## Setup
@@ -81,7 +81,7 @@ Backend: `http://localhost:8000`
 Frontend: `http://localhost:8501`
 API docs: `http://localhost:8000/docs`
 
-The frontend is designed as a concise clinical operations dashboard: select a patient, ask a clinical question, run analysis, and review findings across structured tabs.
+The frontend is designed as a clinical operations assistant: select a patient, ask a clinical question, run analysis, and review an evidence-grounded answer across structured tabs.
 
 ## Synthea Data
 
@@ -109,9 +109,15 @@ curl http://localhost:8000/patients
 ```
 
 ```bash
+curl -X POST http://localhost:8000/ask \
+  -H "Content-Type: application/json" \
+  -d '{"patient_id":"p001","question":"What care gaps exist for this patient?","data_source":"synthea"}'
+```
+
+```bash
 curl -X POST http://localhost:8000/analyze-patient \
   -H "Content-Type: application/json" \
-  -d '{"patient_id":"p001","question":"Identify care gaps, documentation gaps, and revenue risks","use_llm":false}'
+  -d '{"patient_id":"p001","question":"Identify care gaps, documentation gaps, and revenue risks"}'
 ```
 
 ## Docker
@@ -133,8 +139,8 @@ pytest
 
 Add screenshots here after running the Streamlit app:
 
-- Clinical Gap Intelligence dashboard header and KPI cards
-- Sidebar cohort filters and AI Assistant controls
+- Clinical Gap Intelligence header and KPI cards
+- Sidebar patient context controls
 - Care Gap Analysis, Documentation Review, and Revenue & Quality Risk tabs
 - Evidence Summary and Patient Timeline tabs
 - FastAPI docs
@@ -144,7 +150,7 @@ Add screenshots here after running the Streamlit app:
 - This is not a medical device.
 - Rules are intentionally transparent but simplified.
 - Local vector search uses deterministic hash embeddings by default for offline operation.
-- LLM synthesis is optional and never used as the sole source of truth.
+- OpenAI or Azure OpenAI synthesis is grounded by retrieved evidence and rule outputs.
 - Clinical, coding, and quality outputs require human validation.
 
 ## Production Roadmap

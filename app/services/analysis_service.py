@@ -3,9 +3,9 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
-from app.api.schemas import AnalyzeResponse, RetrievedContext
+from app.api.schemas import AnalyzeResponse, AskResponse, RetrievedContext
 from app.rag.evidence_builder import recommended_actions
-from app.rag.orchestrator import synthesize
+from app.rag.orchestrator import synthesize, synthesize_with_status
 from app.retrieval.chunker import timeline_to_documents
 from app.retrieval.embeddings import get_embedding_provider
 from app.retrieval.retriever import HybridRetriever
@@ -25,6 +25,18 @@ def patient_summary_text(patient: dict) -> str:
         f"{patient.get('name')} (synthetic patient {patient.get('id')}), "
         f"age {patient.get('age') or 'unknown'}, gender {patient.get('gender') or 'unknown'}. "
         f"Known conditions: {conditions}."
+    )
+
+
+def timeline_summary_text(timeline: list[dict]) -> str:
+    if not timeline:
+        return "No timeline events are available for this patient."
+    event_types = sorted({event.get("type", "event") for event in timeline})
+    latest = [event for event in timeline if event.get("date")][-5:]
+    latest_text = "; ".join(f"{event.get('date')}: {event.get('text')}" for event in latest)
+    return (
+        f"{len(timeline)} timeline events across {', '.join(event_types)}. "
+        f"Recent context: {latest_text or 'No dated events available.'}"
     )
 
 
@@ -96,3 +108,57 @@ def analyze_patient(patient_id: str, question: str, use_llm: bool = True) -> Ana
     })
     del ANALYSIS_HISTORY[:-25]
     return response
+
+
+def ask_patient(patient_id: str, question: str) -> AskResponse:
+    patient = repository.patient(patient_id)
+    if not patient:
+        raise ValueError(f"Unknown patient_id: {patient_id}")
+
+    timeline = build_patient_timeline(repository.data, patient_id)
+    if not INDEX_PATH.exists():
+        build_index()
+
+    retriever = HybridRetriever(INDEX_PATH)
+    context = retriever.retrieve(question, patient_id=patient_id, top_k=8)
+    care_gaps, documentation_gaps, risks = run_all_rules(timeline, patient)
+    summary = patient_summary_text(patient)
+    timeline_summary = timeline_summary_text(timeline)
+    gaps_payload = {
+        "care_gaps": [gap.model_dump() for gap in care_gaps],
+        "documentation_gaps": [gap.model_dump() for gap in documentation_gaps],
+        "revenue_quality_risks": [gap.model_dump() for gap in risks],
+    }
+    answer, model_status = synthesize_with_status(
+        question=question,
+        patient_summary=summary,
+        gaps=gaps_payload,
+        context=context,
+        timeline_events=timeline,
+        use_llm=True,
+    )
+    actions = recommended_actions(care_gaps, documentation_gaps, risks)
+
+    ANALYSIS_HISTORY.append({
+        "patient_id": patient_id,
+        "patient_name": patient.get("name"),
+        "question": question,
+        "care_gaps": len(care_gaps),
+        "documentation_gaps": len(documentation_gaps),
+        "revenue_quality_risks": len(risks),
+        "ran_at": datetime.now(timezone.utc).isoformat(),
+    })
+    del ANALYSIS_HISTORY[:-25]
+
+    return AskResponse(
+        patient_id=patient_id,
+        question=question,
+        answer=answer,
+        care_gaps=care_gaps,
+        documentation_gaps=documentation_gaps,
+        revenue_quality_risks=risks,
+        supporting_evidence=[RetrievedContext(**hit) for hit in context],
+        recommended_actions=actions,
+        timeline_summary=timeline_summary,
+        model_status=model_status,  # type: ignore[arg-type]
+    )

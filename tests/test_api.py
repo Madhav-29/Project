@@ -27,3 +27,24 @@ def test_analyze_patient_response():
     payload = response.json()
     assert payload["patient_id"] == "p001"
     assert "care_gaps" in payload
+
+
+def test_ask_response_contract(monkeypatch):
+    import app.rag.orchestrator as orchestrator
+
+    monkeypatch.setattr(orchestrator, "has_llm_credentials", lambda: False)
+    response = client.post(
+        "/ask",
+        json={
+            "patient_id": "p001",
+            "question": "What care gaps exist for this patient?",
+            "data_source": "synthea",
+        },
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["patient_id"] == "p001"
+    assert payload["question"] == "What care gaps exist for this patient?"
+    assert payload["model_status"] in {"enabled", "fallback"}
+    assert "answer" in payload
+    assert "supporting_evidence" in payload

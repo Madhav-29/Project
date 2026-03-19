@@ -26,3 +26,10 @@ def get_llm_client() -> LLMClient:
     if os.getenv("OPENAI_API_KEY"):
         return OpenAIChatClient()
     return StubLLMClient()
+
+
+def has_llm_credentials() -> bool:
+    return bool(
+        (os.getenv("AZURE_OPENAI_ENDPOINT") and os.getenv("AZURE_OPENAI_API_KEY"))
+        or os.getenv("OPENAI_API_KEY")
+    )

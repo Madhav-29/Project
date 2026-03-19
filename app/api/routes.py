@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
-from app.api.schemas import AnalyzeRequest, AnalyzeResponse, AskRequest, IngestResponse, PatientSummary
+from app.api.schemas import AnalyzeRequest, AnalyzeResponse, AskRequest, AskResponse, IngestResponse, PatientSummary
 from app.ingestion.synthea_loader import SyntheaDataMissingError
-from app.services.analysis_service import analyze_patient, build_index, live_overview
+from app.services.analysis_service import analyze_patient, ask_patient, build_index, live_overview
 from app.services.ingestion_service import repository
 
 
@@ -57,9 +57,9 @@ def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
-@router.post("/ask", response_model=AnalyzeResponse)
-def ask(request: AskRequest) -> AnalyzeResponse:
+@router.post("/ask", response_model=AskResponse)
+def ask(request: AskRequest) -> AskResponse:
     try:
-        return analyze_patient(request.patient_id, request.question, request.use_llm)
+        return ask_patient(request.patient_id, request.question)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

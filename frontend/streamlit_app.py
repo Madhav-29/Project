@@ -10,7 +10,13 @@ import streamlit as st
 
 
 API_URL = os.getenv("API_URL", "http://localhost:8000")
-DEFAULT_QUESTION = "Identify care gaps, documentation gaps, and revenue risks"
+DEFAULT_QUESTION = "What care gaps exist for this patient?"
+SUGGESTED_QUERIES = [
+    "What care gaps exist for this patient?",
+    "Summarize documentation risks",
+    "What evidence supports these gaps?",
+    "What quality or revenue risks should be reviewed?",
+]
 
 
 st.set_page_config(page_title="Clinical Gap Intelligence", layout="wide")
@@ -19,81 +25,85 @@ st.markdown(
     """
     <style>
       :root {
-        --navy: #16324f;
+        --navy: #15324f;
         --teal: #0f766e;
-        --sky: #e8f3fb;
-        --line: #d9e2ec;
+        --teal-soft: #e6f5f2;
+        --blue-soft: #eef6fb;
+        --line: #d8e2ec;
         --text: #1f2937;
         --muted: #64748b;
         --panel: #ffffff;
+        --surface: #f7fafc;
       }
       .block-container {
-        padding-top: 1.5rem;
+        padding-top: 1.35rem;
         padding-bottom: 2rem;
-        max-width: 1280px;
+        max-width: 1320px;
       }
       [data-testid="stSidebar"] {
-        background: #f7fafc;
+        background: var(--surface);
         border-right: 1px solid var(--line);
       }
       .app-header {
-        padding: 1.5rem 1.75rem;
+        padding: 1.45rem 1.6rem;
         border: 1px solid var(--line);
         border-radius: 10px;
         background: linear-gradient(135deg, #ffffff 0%, #f1f8fb 100%);
-        margin-bottom: 1.25rem;
+        margin-bottom: 1.2rem;
       }
       .eyebrow {
         color: var(--teal);
         font-size: 0.78rem;
-        font-weight: 700;
+        font-weight: 760;
         letter-spacing: 0.08em;
         text-transform: uppercase;
         margin-bottom: 0.35rem;
       }
       .app-title {
         color: var(--navy);
-        font-size: 2rem;
+        font-size: 2.05rem;
         line-height: 1.15;
-        font-weight: 760;
+        font-weight: 780;
         margin: 0;
       }
       .app-subtitle {
         color: var(--muted);
         font-size: 1.02rem;
         margin-top: 0.45rem;
-        max-width: 760px;
+        max-width: 840px;
       }
       .section-title {
         color: var(--navy);
-        font-size: 1.05rem;
-        font-weight: 740;
+        font-size: 1.08rem;
+        font-weight: 760;
         margin: 1rem 0 0.55rem 0;
       }
-      .panel {
-        background: var(--panel);
+      .answer-panel {
+        background: #ffffff;
         border: 1px solid var(--line);
         border-radius: 10px;
-        padding: 1rem;
+        padding: 1.15rem;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
       }
       .kpi-card {
         border: 1px solid var(--line);
         border-radius: 10px;
         background: #ffffff;
-        padding: 1rem 1rem 0.85rem 1rem;
+        padding: 1rem;
         min-height: 112px;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
       }
       .kpi-label {
         color: var(--muted);
-        font-size: 0.78rem;
-        font-weight: 700;
+        font-size: 0.76rem;
+        font-weight: 760;
         text-transform: uppercase;
         letter-spacing: 0.04em;
       }
       .kpi-value {
         color: var(--navy);
-        font-size: 1.75rem;
-        font-weight: 760;
+        font-size: 1.85rem;
+        font-weight: 780;
         margin-top: 0.25rem;
       }
       .kpi-note {
@@ -111,7 +121,7 @@ st.markdown(
       }
       .finding-title {
         color: var(--navy);
-        font-weight: 730;
+        font-weight: 760;
         font-size: 1rem;
         margin-bottom: 0.35rem;
       }
@@ -125,6 +135,13 @@ st.markdown(
         border-radius: 10px;
         background: #f8fbfd;
         color: var(--muted);
+        padding: 1rem;
+      }
+      .timeline-box {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--blue-soft);
+        color: var(--text);
         padding: 1rem;
       }
       .footer {
@@ -142,10 +159,13 @@ st.markdown(
       }
       div[data-testid="stMetricLabel"] p {
         color: var(--muted);
-        font-weight: 700;
+        font-weight: 760;
       }
       div[data-testid="stMetricValue"] {
         color: var(--navy);
+      }
+      .stButton > button {
+        border-radius: 8px;
       }
     </style>
     """,
@@ -160,7 +180,7 @@ def api_get(path: str) -> dict[str, Any] | list[dict[str, Any]]:
 
 
 def api_post(path: str, payload: dict[str, Any]) -> dict[str, Any]:
-    response = requests.post(f"{API_URL}{path}", json=payload, timeout=90)
+    response = requests.post(f"{API_URL}{path}", json=payload, timeout=120)
     response.raise_for_status()
     return response.json()
 
@@ -180,10 +200,9 @@ def render_header() -> None:
         """
         <div class="app-header">
           <div class="eyebrow">Clinical Gap Intelligence</div>
-          <h1 class="app-title">AI Assistant for Clinical Gap Intelligence</h1>
+          <h1 class="app-title">Clinical Gap Intelligence</h1>
           <div class="app-subtitle">
-            Review care gaps, documentation findings, quality risk signals, evidence summaries,
-            and patient timeline context from structured clinical data.
+            AI Assistant for patient-specific care gap, documentation, and quality risk analysis
           </div>
         </div>
         """,
@@ -238,7 +257,7 @@ def render_gap_list(items: list[dict[str, Any]], empty_message: str) -> None:
 
 def render_evidence(items: list[dict[str, Any]]) -> None:
     if not items:
-        render_empty("No retrieved evidence is available for the selected question.")
+        render_empty("No supporting evidence is available for the selected question.")
         return
     for item in items:
         st.markdown(
@@ -250,42 +269,38 @@ def render_evidence(items: list[dict[str, Any]]) -> None:
         st.divider()
 
 
-def timeline_dataframe(events: list[dict[str, Any]]) -> pd.DataFrame:
-    if not events:
-        return pd.DataFrame(columns=["date", "type", "label", "text"])
-    frame = pd.DataFrame(events).drop(columns=["raw"], errors="ignore")
-    columns = [column for column in ["date", "type", "label", "text", "id"] if column in frame.columns]
-    return frame[columns]
+def evidence_dataframe(items: list[dict[str, Any]]) -> pd.DataFrame:
+    if not items:
+        return pd.DataFrame(columns=["source_type", "date", "text"])
+    return pd.DataFrame(items)[[column for column in ["source_type", "date", "text", "score"] if column in items[0]]]
 
+
+if "question_text" not in st.session_state:
+    st.session_state.question_text = DEFAULT_QUESTION
 
 render_header()
 
 try:
     overview = get_live_overview()
     patients = get_patients()
-except requests.RequestException as exc:
+except requests.RequestException:
     st.error(
-        "The Clinical Gap Intelligence API is not reachable. "
-        f"Confirm the FastAPI backend is running and that API_URL is set correctly. Current API_URL: {API_URL}."
+        "Clinical Gap Intelligence is currently unable to connect to the analysis API. "
+        "Confirm the backend service is running and refresh the page."
     )
-    with st.expander("Connection details"):
-        st.write(str(exc))
     st.stop()
 
 with st.sidebar:
-    st.markdown("### Analysis Controls")
-    st.caption("Clinical Gap Intelligence")
-    use_llm = st.toggle("AI Assistant", value=False)
-    live_mode = st.toggle("Auto refresh", value=False)
-    st.divider()
-    st.markdown("### Cohort Filters")
+    st.markdown("### Patient Context")
     condition_filter = st.text_input("Condition contains", "")
     min_age = st.slider("Minimum age", 0, 100, 0)
     st.divider()
-    st.markdown("### System")
-    st.caption(f"API: {API_URL}")
+    st.markdown("### System Status")
+    st.caption(f"Records: {overview.get('patient_count', len(patients))}")
+    st.caption(f"Evidence index: {'Ready' if overview.get('index_ready') else 'Pending'}")
     st.caption(f"Data source: {overview.get('data_source', 'unknown')}")
-    st.caption("For demonstration with synthetic data only.")
+    st.divider()
+    auto_refresh = st.toggle("Refresh status", value=False)
 
 filtered_patients = [
     patient
@@ -297,18 +312,8 @@ filtered_patients = [
     )
 ]
 
-status_cols = st.columns(4)
-with status_cols[0]:
-    render_kpi("Patients", overview.get("patient_count", len(patients)), "Available records")
-with status_cols[1]:
-    render_kpi("Analyses", overview.get("analysis_count", 0), "Session activity")
-with status_cols[2]:
-    render_kpi("Evidence Index", "Ready" if overview.get("index_ready") else "Pending", "Retrieval status")
-with status_cols[3]:
-    render_kpi("Assistant", "On" if use_llm else "Off", "LLM synthesis")
-
 if not filtered_patients:
-    render_empty("No patients match the selected filters. Adjust the cohort filters in the sidebar.")
+    render_empty("No patients match the selected filters. Adjust the patient context controls.")
     st.stop()
 
 patient_labels = {
@@ -316,99 +321,112 @@ patient_labels = {
     for patient in filtered_patients
 }
 
-st.markdown('<div class="section-title">Care Gap Analysis</div>', unsafe_allow_html=True)
-control_cols = st.columns([0.44, 0.56])
-with control_cols[0]:
-    patient_label = st.selectbox("Patient", list(patient_labels))
-with control_cols[1]:
-    question = st.text_input("Clinical question", DEFAULT_QUESTION)
+result = st.session_state.get("last_answer")
 
-run = st.button("Run Analysis", type="primary", use_container_width=True)
+status_cols = st.columns(4)
+with status_cols[0]:
+    render_kpi("Care Gaps", len(result["care_gaps"]) if result else "-", "Open items" if result else "Run analysis")
+with status_cols[1]:
+    render_kpi(
+        "Documentation Gaps",
+        len(result["documentation_gaps"]) if result else "-",
+        "Review findings" if result else "Run analysis",
+    )
+with status_cols[2]:
+    render_kpi(
+        "Risk Items",
+        len(result["revenue_quality_risks"]) if result else "-",
+        "Quality and revenue" if result else "Run analysis",
+    )
+with status_cols[3]:
+    render_kpi(
+        "Evidence Sources",
+        len(result["supporting_evidence"]) if result else "-",
+        "Retrieved snippets" if result else "Run analysis",
+    )
+
+st.markdown('<div class="section-title">Ask a Clinical Question</div>', unsafe_allow_html=True)
+input_cols = st.columns([0.42, 0.58])
+with input_cols[0]:
+    patient_label = st.selectbox("Patient", list(patient_labels))
+with input_cols[1]:
+    question = st.text_area("Question", key="question_text", height=92)
+
+chip_cols = st.columns(4)
+for index, suggested_query in enumerate(SUGGESTED_QUERIES):
+    with chip_cols[index]:
+        if st.button(suggested_query, use_container_width=True):
+            st.session_state.question_text = suggested_query
+            st.rerun()
+
+run = st.button("Analyze", type="primary", use_container_width=True)
 if run:
-    with st.status("Running clinical gap analysis...", expanded=True) as status:
-        st.write("Building patient context")
-        st.write("Retrieving supporting evidence")
-        st.write("Applying care gap and documentation rules")
-        if use_llm:
-            st.write("Preparing AI Assistant synthesis")
+    with st.status("Analyzing patient context...", expanded=True) as status:
+        st.write("Retrieving patient evidence")
+        st.write("Evaluating clinical rules")
+        st.write("Preparing assistant answer")
         try:
-            st.session_state["last_result"] = api_post(
-                "/analyze-patient",
+            st.session_state["last_answer"] = api_post(
+                "/ask",
                 {
                     "patient_id": patient_labels[patient_label],
-                    "question": question or DEFAULT_QUESTION,
-                    "use_llm": use_llm,
+                    "question": st.session_state.question_text or DEFAULT_QUESTION,
+                    "data_source": "synthea",
                 },
             )
             get_live_overview.clear()
             status.update(label="Analysis complete", state="complete", expanded=False)
-        except requests.RequestException as exc:
-            status.update(label="Analysis failed", state="error", expanded=True)
-            st.error("Analysis could not be completed. Confirm the backend is running and retry.")
-            with st.expander("Error details"):
-                st.write(str(exc))
-
-result = st.session_state.get("last_result")
+        except requests.RequestException:
+            status.update(label="Analysis unavailable", state="error", expanded=True)
+            st.error("Analysis could not be completed. Please confirm the API service is available and retry.")
 
 if not result:
-    last = overview.get("last_analysis")
-    if last:
-        st.info(
-            f"Most recent analysis: {last['patient_name']} "
-            f"({last['care_gaps']} care gaps, {last['documentation_gaps']} documentation findings)."
-        )
-    else:
-        render_empty("Select a patient and run an analysis to view findings, evidence, and timeline context.")
+    render_empty("Select a patient, ask a clinical question, and run Analyze to view the assistant answer.")
 else:
-    st.markdown('<div class="section-title">Patient Summary</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="panel">{result["patient_summary"]}</div>', unsafe_allow_html=True)
-
-    finding_cols = st.columns(3)
-    finding_cols[0].metric("Care Gaps", len(result["care_gaps"]))
-    finding_cols[1].metric("Documentation Review", len(result["documentation_gaps"]))
-    finding_cols[2].metric("Revenue & Quality Risk", len(result["revenue_quality_risks"]))
-
     tabs = st.tabs([
+        "AI Answer",
         "Care Gaps",
-        "Documentation Gaps",
-        "Revenue Risks",
-        "Evidence Summary",
-        "Patient Timeline",
-        "AI Assistant",
+        "Documentation",
+        "Revenue & Quality",
+        "Evidence",
+        "Timeline",
     ])
 
     with tabs[0]:
-        render_gap_list(result["care_gaps"], "No care gaps were identified for the available evidence.")
-    with tabs[1]:
-        render_gap_list(
-            result["documentation_gaps"],
-            "No documentation gaps were identified for the available evidence.",
-        )
-    with tabs[2]:
-        render_gap_list(
-            result["revenue_quality_risks"],
-            "No revenue or quality risk signals were identified for the available evidence.",
-        )
-    with tabs[3]:
-        render_evidence(result["retrieved_context"])
-    with tabs[4]:
-        frame = timeline_dataframe(result["raw_timeline"])
-        if frame.empty:
-            render_empty("No timeline events are available for this patient.")
-        else:
-            st.dataframe(frame, use_container_width=True, hide_index=True)
-    with tabs[5]:
-        st.markdown('<div class="section-title">Evidence-Grounded Synthesis</div>', unsafe_allow_html=True)
-        st.write(result["llm_synthesis"])
+        st.markdown('<div class="section-title">AI Assistant Answer</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="answer-panel">{result["answer"]}</div>', unsafe_allow_html=True)
+        if result.get("model_status") == "fallback":
+            st.info("AI Assistant summary unavailable. Configure model credentials to enable generated summaries.")
         st.markdown('<div class="section-title">Recommended Actions</div>', unsafe_allow_html=True)
         if result["recommended_actions"]:
             for action in result["recommended_actions"]:
                 st.write(f"- {action}")
         else:
-            render_empty("No recommended actions are available.")
+            render_empty("No recommended actions are available for this analysis.")
+    with tabs[1]:
+        render_gap_list(result["care_gaps"], "No care gaps were identified for the available evidence.")
+    with tabs[2]:
+        render_gap_list(result["documentation_gaps"], "No documentation gaps were identified for the available evidence.")
+    with tabs[3]:
+        render_gap_list(
+            result["revenue_quality_risks"],
+            "No revenue or quality risk items were identified for the available evidence.",
+        )
+    with tabs[4]:
+        render_evidence(result["supporting_evidence"])
+        evidence_frame = evidence_dataframe(result["supporting_evidence"])
+        if not evidence_frame.empty:
+            with st.expander("Evidence Table"):
+                st.dataframe(evidence_frame, use_container_width=True, hide_index=True)
+    with tabs[5]:
+        st.markdown('<div class="section-title">Patient Timeline</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="timeline-box">{result["timeline_summary"]}</div>', unsafe_allow_html=True)
 
-st.markdown('<div class="footer">For demonstration with synthetic data only.</div>', unsafe_allow_html=True)
+st.markdown(
+    '<div class="footer">Synthetic data environment for clinical AI engineering demonstration.</div>',
+    unsafe_allow_html=True,
+)
 
-if live_mode:
+if auto_refresh:
     time.sleep(10)
     st.rerun()
