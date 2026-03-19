@@ -7,7 +7,7 @@ from app.rag.prompts import SYSTEM_MESSAGE, build_user_prompt
 
 def synthesize(question: str, patient_summary: str, gaps: dict, context: list[dict], use_llm: bool = True) -> str:
     if not use_llm:
-        return "AI-assisted synthesis disabled. Review structured gaps and supporting evidence. Clinical validation required."
+        return "AI Assistant is disabled. Review structured gaps and supporting evidence."
     client = get_llm_client()
     prompt = build_user_prompt(question, patient_summary, gaps, context)
     return client.complete([ChatMessage("system", SYSTEM_MESSAGE), ChatMessage("user", prompt)])

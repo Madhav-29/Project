@@ -15,8 +15,8 @@ load_dotenv(Path(__file__).resolve().parents[2] / ".env", override=True)
 class StubLLMClient(LLMClient):
     def complete(self, messages):
         return (
-            "AI-assisted synthesis requiring clinical validation: LLM credentials are not configured, so this prototype "
-            "returned a deterministic summary from structured rules and retrieved synthetic evidence only."
+            "AI Assistant synthesis is unavailable because LLM credentials are not configured. "
+            "Structured rules and retrieved synthetic evidence are still available for review."
         )
 
 

@@ -16,7 +16,7 @@ configure_logging()
 app = FastAPI(
     title="Clinical AI Platform",
     version="0.1.0",
-    description="Live synthetic-data clinical AI prototype for care gap, documentation gap, and quality risk review.",
+    description="Clinical Gap Intelligence API for care gap, documentation, evidence, and quality risk workflows.",
 )
 
 app.add_middleware(

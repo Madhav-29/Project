@@ -1,8 +1,8 @@
 # Clinical AI Platform
 
-Live full-stack clinical AI platform prototype for synthetic patient data, transparent care-gap rules, local retrieval, and optional OpenAI or Azure OpenAI synthesis.
+Full-stack Clinical Gap Intelligence platform for synthetic patient data, transparent care-gap rules, local retrieval, and optional OpenAI or Azure OpenAI synthesis.
 
-This repository uses fake data only. Do not use real PHI. Outputs are AI-assisted and require clinical validation.
+This repository uses synthetic data only. Do not use real PHI.
 
 ## Architecture
 
@@ -37,7 +37,7 @@ Simple Streamlit Live UI
 - Retrieves evidence for patient questions.
 - Uses OpenAI or Azure OpenAI when configured for grounded synthesis.
 - Exposes FastAPI endpoints and a simple live Streamlit analyst UI.
-- Provides `/live/overview` for live demo status, cohort count, index readiness, and recent analysis metadata.
+- Provides `/live/overview` for operational status, cohort count, index readiness, and recent analysis metadata.
 
 ## Setup
 
@@ -81,7 +81,7 @@ Backend: `http://localhost:8000`
 Frontend: `http://localhost:8501`
 API docs: `http://localhost:8000/docs`
 
-The frontend is intentionally simple for live demos: select a synthetic patient, ask one question, run analysis, and optionally turn on auto-refresh.
+The frontend is designed as a concise clinical operations dashboard: select a patient, ask a clinical question, run analysis, and review findings across structured tabs.
 
 ## Synthea Data
 
@@ -131,16 +131,17 @@ pytest
 
 ## Screenshots
 
-Add portfolio screenshots here after running the Streamlit app:
+Add screenshots here after running the Streamlit app:
 
-- Patient selector and filters
-- Gap analysis cards
-- Evidence timeline
-- API docs
+- Clinical Gap Intelligence dashboard header and KPI cards
+- Sidebar cohort filters and AI Assistant controls
+- Care Gap Analysis, Documentation Review, and Revenue & Quality Risk tabs
+- Evidence Summary and Patient Timeline tabs
+- FastAPI docs
 
 ## Limitations
 
-- This is a prototype and is not a medical device.
+- This is not a medical device.
 - Rules are intentionally transparent but simplified.
 - Local vector search uses deterministic hash embeddings by default for offline operation.
 - LLM synthesis is optional and never used as the sole source of truth.

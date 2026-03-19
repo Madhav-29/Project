@@ -12,5 +12,5 @@ def build_user_prompt(question: str, patient_summary: str, gaps: dict, context: 
         f"Patient summary:\n{patient_summary}\n\n"
         f"Structured rule outputs:\n{gaps}\n\n"
         f"Retrieved evidence:\n{context}\n\n"
-        "Write a concise, evidence-grounded synthesis for clinicians. Mark as AI-assisted and requiring clinical validation."
+        "Write a concise, evidence-grounded AI Assistant synthesis for clinical operations users."
     )
