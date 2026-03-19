@@ -5,3 +5,7 @@ DATE,PATIENT,CODE,DESCRIPTION,VALUE,UNITS
 2025-02-22,p002,85354-9,Blood pressure panel with all children optional,132/82,mmHg
 2024-03-05,p002,39156-5,Body Mass Index,34.1,kg/m2
 2023-07-18,p003,8302-2,Body height,165,cm
+2024-08-19,p004,4548-4,Hemoglobin A1c/Hemoglobin.total in Blood,7.9,%
+2024-08-19,p004,2093-3,Total Cholesterol,232,mg/dL
+2025-03-11,p005,85354-9,Blood pressure panel with all children optional,151/90,mmHg
+2024-04-02,p005,33914-3,eGFR,44,mL/min/1.73m2

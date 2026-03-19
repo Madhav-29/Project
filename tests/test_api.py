@@ -19,6 +19,7 @@ def test_live_overview():
     payload = response.json()
     assert payload["project"] == "Clinical AI Platform"
     assert payload["status"] == "live"
+    assert payload["patient_count"] == 5
 
 
 def test_analyze_patient_response():
@@ -58,6 +59,10 @@ def test_patient_search_and_index_status():
     search = client.get("/patients/search?q=p001")
     assert search.status_code == 200
     assert search.json()[0]["id"] == "p001"
+
+    all_patients = client.get("/patients")
+    assert all_patients.status_code == 200
+    assert len(all_patients.json()) == 5
 
     status = client.get("/index/status")
     assert status.status_code == 200
