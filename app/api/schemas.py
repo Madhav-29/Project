@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 Confidence = Literal["high", "medium", "low"]
@@ -10,39 +10,56 @@ Priority = Literal["high", "medium", "low"]
 
 
 class Evidence(BaseModel):
-    source_type: str
-    id: str
+    source_type: str = Field(..., examples=["observation"])
+    id: str = Field(..., examples=["p001:observation:Hemoglobin A1c/Hemoglobin.total in Blood:0"])
     date: str | None = None
-    text: str
+    text: str = Field(..., examples=["Observation: Hemoglobin A1c/Hemoglobin.total in Blood 8.4 %"])
 
 
 class Gap(BaseModel):
-    type: str
-    title: str
-    reason: str
-    impact: str
+    type: str = Field(..., examples=["care_gap"])
+    title: str = Field(..., examples=["Diabetes HbA1c monitoring due"])
+    reason: str = Field(..., examples=["Active diabetes is present but no HbA1c result was found in the last 12 months."])
+    impact: str = Field(..., examples=["Quality programs often require ongoing glycemic monitoring for diabetes populations."])
     confidence: Confidence = "medium"
     priority: Priority = "medium"
-    time_window: str
+    time_window: str = Field(..., examples=["Last 12 months"])
     supporting_evidence: list[Evidence] = Field(default_factory=list)
 
 
 class AnalyzeRequest(BaseModel):
-    patient_id: str
-    question: str = "Identify care gaps, documentation gaps, and revenue risks"
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "patient_id": "p001",
+            "question": "Identify care gaps, documentation gaps, and revenue risks",
+            "data_source": "synthea",
+            "use_llm": True,
+        }
+    })
+
+    patient_id: str = Field(..., examples=["p001"])
+    question: str = Field("Identify care gaps, documentation gaps, and revenue risks", examples=["Identify care gaps, documentation gaps, and revenue risks"])
     data_source: str = "synthea"
-    use_llm: bool = True
+    use_llm: bool = Field(True, description="Legacy structured-analysis flag. The `/ask` assistant endpoint uses the configured model automatically.")
 
 
 class AskRequest(BaseModel):
-    patient_id: str
-    question: str
-    data_source: str = "synthea"
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "patient_id": "p001",
+            "question": "What care gaps exist for this patient?",
+            "data_source": "synthea",
+        }
+    })
+
+    patient_id: str = Field(..., examples=["p001"])
+    question: str = Field(..., examples=["What care gaps exist for this patient?"])
+    data_source: str = Field("synthea", examples=["synthea"])
 
 
 class PatientSummary(BaseModel):
-    id: str
-    name: str
+    id: str = Field(..., examples=["p001"])
+    name: str = Field(..., examples=["Evelyn Carter"])
     birthdate: str | None = None
     age: int | None = None
     gender: str | None = None
@@ -50,17 +67,32 @@ class PatientSummary(BaseModel):
 
 
 class RetrievedContext(BaseModel):
-    id: str
-    source_type: str
-    date: str | None = None
-    text: str
+    id: str = Field(..., examples=["p001:observation:Hemoglobin A1c/Hemoglobin.total in Blood:0"])
+    source_type: str = Field(..., examples=["observation"])
+    date: str | None = Field(None, examples=["2024-02-10"])
+    text: str = Field(..., examples=["Observation: Hemoglobin A1c/Hemoglobin.total in Blood 8.4 %"])
     score: float | None = None
 
 
 class AskResponse(BaseModel):
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "patient_id": "p001",
+            "question": "What care gaps exist for this patient?",
+            "answer": "The patient has care gaps related to diabetes monitoring, CKD monitoring, and medication review. Supporting evidence includes active chronic conditions and dated observations from the patient timeline.",
+            "care_gaps": [],
+            "documentation_gaps": [],
+            "revenue_quality_risks": [],
+            "supporting_evidence": [],
+            "recommended_actions": ["Clinician to review: Diabetes HbA1c monitoring due."],
+            "timeline_summary": "12 timeline events across condition, encounter, medication, observation, and procedure.",
+            "model_status": "enabled",
+        }
+    })
+
     patient_id: str
     question: str
-    answer: str
+    answer: str = Field(..., description="Evidence-grounded assistant answer. Falls back to a clear configuration message when model credentials are unavailable.")
     care_gaps: list[Gap]
     documentation_gaps: list[Gap]
     revenue_quality_risks: list[Gap]
@@ -83,6 +115,6 @@ class AnalyzeResponse(BaseModel):
 
 
 class IngestResponse(BaseModel):
-    source: str
-    patients_loaded: int
-    message: str
+    source: str = Field(..., examples=["synthea"])
+    patients_loaded: int = Field(..., examples=[100])
+    message: str = Field(..., examples=["Synthea CSV data loaded."])

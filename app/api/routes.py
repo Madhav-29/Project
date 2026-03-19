@@ -11,22 +11,44 @@ from app.services.ingestion_service import repository
 router = APIRouter()
 
 
-@router.get("/health")
+@router.get(
+    "/health",
+    tags=["System"],
+    summary="Check API health",
+    description="Returns service status and the active synthetic data source.",
+)
 def health() -> dict:
     return {"status": "ok", "project": "Clinical AI Platform", "data_source": repository.source}
 
 
-@router.get("/live/overview")
+@router.get(
+    "/live/overview",
+    tags=["System"],
+    summary="Get assistant runtime overview",
+    description="Returns cohort size, evidence-index readiness, data source, and recent analysis metadata.",
+)
 def live() -> dict:
     return live_overview()
 
 
-@router.get("/patients", response_model=list[PatientSummary])
+@router.get(
+    "/patients",
+    response_model=list[PatientSummary],
+    tags=["Patients"],
+    summary="List synthetic patients",
+    description="Returns available synthetic patients with age, gender, and known condition names.",
+)
 def list_patients() -> list[dict]:
     return repository.patients()
 
 
-@router.get("/patients/{patient_id}", response_model=PatientSummary)
+@router.get(
+    "/patients/{patient_id}",
+    response_model=PatientSummary,
+    tags=["Patients"],
+    summary="Get synthetic patient context",
+    description="Returns demographic and condition context for a synthetic patient.",
+)
 def get_patient(patient_id: str) -> dict:
     patient = repository.patient(patient_id)
     if not patient:
@@ -34,7 +56,13 @@ def get_patient(patient_id: str) -> dict:
     return patient
 
 
-@router.post("/ingest/synthea", response_model=IngestResponse)
+@router.post(
+    "/ingest/synthea",
+    response_model=IngestResponse,
+    tags=["Data Operations"],
+    summary="Load Synthea CSV data",
+    description="Loads Synthea CSV files from `data/synthea/csv`. Falls back to bundled sample data when Synthea files are absent.",
+)
 def ingest_synthea() -> IngestResponse:
     try:
         count = repository.ingest_synthea()
@@ -43,13 +71,24 @@ def ingest_synthea() -> IngestResponse:
     return IngestResponse(source="synthea", patients_loaded=count, message="Synthea CSV data loaded.")
 
 
-@router.post("/index/build")
+@router.post(
+    "/index/build",
+    tags=["Data Operations"],
+    summary="Build local evidence index",
+    description="Builds the local vector-style evidence index from patient timeline documents.",
+)
 def index_build() -> dict:
     count = build_index()
     return {"documents_indexed": count}
 
 
-@router.post("/analyze-patient", response_model=AnalyzeResponse)
+@router.post(
+    "/analyze-patient",
+    response_model=AnalyzeResponse,
+    tags=["Analysis"],
+    summary="Run structured patient analysis",
+    description="Returns structured care gaps, documentation gaps, quality risks, retrieved context, and timeline events.",
+)
 def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
     try:
         return analyze_patient(request.patient_id, request.question, request.use_llm)
@@ -57,7 +96,17 @@ def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
-@router.post("/ask", response_model=AskResponse)
+@router.post(
+    "/ask",
+    response_model=AskResponse,
+    tags=["Assistant"],
+    summary="Ask the Clinical Gap Intelligence Assistant",
+    description=(
+        "Primary Swagger workflow. Submit a synthetic patient ID and natural-language clinical question. "
+        "The backend automatically retrieves patient evidence, builds timeline context, runs care-gap rules, "
+        "performs RAG retrieval, and uses configured OpenAI/Azure OpenAI synthesis when available."
+    ),
+)
 def ask(request: AskRequest) -> AskResponse:
     try:
         return ask_patient(request.patient_id, request.question)

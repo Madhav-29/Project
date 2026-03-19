@@ -22,10 +22,10 @@ Timeline Documents -> Chunking -> Embeddings -> Local Vector Index
                                    Hybrid Retriever
                                              |
                                              v
-FastAPI APIs + Assistant Status <- RAG Orchestrator ---- OpenAI/Azure OpenAI
-    |
-    v
-Clinical Gap Intelligence UI
+Swagger / FastAPI Docs <------ FastAPI APIs + Assistant Status
+                                      |
+                                      v
+                         RAG Orchestrator ---- OpenAI/Azure OpenAI
 ```
 
 ## What It Does
@@ -36,7 +36,7 @@ Clinical Gap Intelligence UI
 - Indexes timeline evidence into a local vector store.
 - Retrieves evidence for patient questions.
 - Uses OpenAI or Azure OpenAI when configured for grounded synthesis.
-- Exposes FastAPI endpoints and a Streamlit clinical assistant UI.
+- Exposes a Swagger-first Clinical Gap Intelligence Assistant at `/docs`.
 - Provides `/live/overview` for operational status, cohort count, index readiness, and recent analysis metadata.
 
 ## Setup
@@ -71,17 +71,17 @@ Start the backend:
 uvicorn app.api.main:app --reload
 ```
 
-Start the frontend in another terminal:
+Backend: `http://localhost:8000`
+Swagger assistant: `http://localhost:8000/docs`
+ReDoc: `http://localhost:8000/redoc`
+
+Use Swagger as the primary interface: open `/docs`, expand `POST /ask`, choose **Try it out**, submit a synthetic patient ID and question, then review the assistant answer, care gaps, documentation findings, revenue-quality risks, evidence, and timeline summary in the response.
+
+Optional Streamlit UI:
 
 ```bash
 streamlit run frontend/streamlit_app.py
 ```
-
-Backend: `http://localhost:8000`
-Frontend: `http://localhost:8501`
-API docs: `http://localhost:8000/docs`
-
-The frontend is designed as a clinical operations assistant: select a patient, ask a clinical question, run analysis, and review an evidence-grounded answer across structured tabs.
 
 ## Synthea Data
 
@@ -127,7 +127,7 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Backend runs on port `8000`; Streamlit runs on port `8501`.
+Backend runs on port `8000`. The Swagger assistant is available at `http://localhost:8000/docs`.
 
 ## Tests
 
@@ -137,13 +137,11 @@ pytest
 
 ## Screenshots
 
-Add screenshots here after running the Streamlit app:
+Add screenshots here after running the API docs:
 
-- Clinical Gap Intelligence header and KPI cards
-- Sidebar patient context controls
-- Care Gap Analysis, Documentation Review, and Revenue & Quality Risk tabs
-- Evidence Summary and Patient Timeline tabs
-- FastAPI docs
+- Swagger `POST /ask` request example
+- Swagger `POST /ask` assistant response
+- FastAPI endpoint groups for Assistant, Patients, Analysis, Data Operations, and System
 
 ## Limitations
 
