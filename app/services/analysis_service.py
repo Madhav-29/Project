@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from pathlib import Path
 
 from app.api.schemas import AnalyzeResponse, RetrievedContext
@@ -15,6 +16,7 @@ from app.timeline.event_builder import build_patient_timeline
 
 
 INDEX_PATH = PROJECT_ROOT / "data" / "vector_index" / "index.json"
+ANALYSIS_HISTORY: list[dict] = []
 
 
 def patient_summary_text(patient: dict) -> str:
@@ -37,6 +39,21 @@ def build_index() -> int:
     return len(documents)
 
 
+def live_overview() -> dict:
+    patients = repository.patients()
+    indexed = INDEX_PATH.exists()
+    return {
+        "project": "Clinical AI Platform",
+        "status": "live",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "data_source": repository.source,
+        "patient_count": len(patients),
+        "index_ready": indexed,
+        "last_analysis": ANALYSIS_HISTORY[-1] if ANALYSIS_HISTORY else None,
+        "analysis_count": len(ANALYSIS_HISTORY),
+    }
+
+
 def analyze_patient(patient_id: str, question: str, use_llm: bool = True) -> AnalyzeResponse:
     patient = repository.patient(patient_id)
     if not patient:
@@ -57,7 +74,7 @@ def analyze_patient(patient_id: str, question: str, use_llm: bool = True) -> Ana
     }
     synthesis = synthesize(question, summary, gaps_payload, context, use_llm=use_llm)
 
-    return AnalyzeResponse(
+    response = AnalyzeResponse(
         patient_id=patient_id,
         patient_summary=summary,
         care_gaps=care_gaps,
@@ -68,3 +85,14 @@ def analyze_patient(patient_id: str, question: str, use_llm: bool = True) -> Ana
         llm_synthesis=synthesis,
         raw_timeline=timeline,
     )
+    ANALYSIS_HISTORY.append({
+        "patient_id": patient_id,
+        "patient_name": patient.get("name"),
+        "question": question,
+        "care_gaps": len(care_gaps),
+        "documentation_gaps": len(documentation_gaps),
+        "revenue_quality_risks": len(risks),
+        "ran_at": datetime.now(timezone.utc).isoformat(),
+    })
+    del ANALYSIS_HISTORY[:-25]
+    return response

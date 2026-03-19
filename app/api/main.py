@@ -10,9 +10,9 @@ from app.observability.logging_config import configure_logging
 configure_logging()
 
 app = FastAPI(
-    title="Clinical Gap Intelligence Platform",
+    title="Clinical AI Platform",
     version="0.1.0",
-    description="Synthetic-data clinical AI prototype for care gap, documentation gap, and quality risk review.",
+    description="Live synthetic-data clinical AI prototype for care gap, documentation gap, and quality risk review.",
 )
 
 app.add_middleware(

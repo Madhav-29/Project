@@ -10,6 +10,15 @@ def test_health():
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
+    assert response.json()["project"] == "Clinical AI Platform"
+
+
+def test_live_overview():
+    response = client.get("/live/overview")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["project"] == "Clinical AI Platform"
+    assert payload["status"] == "live"
 
 
 def test_analyze_patient_response():
