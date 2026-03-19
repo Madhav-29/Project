@@ -130,6 +130,14 @@ uvicorn app.api.main:app --reload
 Swagger API: `http://localhost:8000/docs`
 ReDoc: `http://localhost:8000/redoc`
 
+Windows helper script:
+
+```powershell
+.\scripts\start_local.ps1
+```
+
+If port `8000` is already busy, the helper picks the next available API port and prints the Swagger URL.
+
 Optional Streamlit UI:
 
 ```bash
@@ -187,6 +195,12 @@ Run:
 
 ```bash
 pytest
+```
+
+Smoke test a running API:
+
+```bash
+python scripts/smoke_test.py --base-url http://127.0.0.1:8000
 ```
 
 ## Docker
