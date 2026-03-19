@@ -19,12 +19,16 @@ def chunk_text(text: str, chunk_size: int = 700, overlap: int = 100) -> list[str
 def timeline_to_documents(patient_id: str, events: list[dict]) -> list[dict]:
     documents: list[dict] = []
     for event in events:
+        raw = event.get("raw", {}) or {}
         for idx, chunk in enumerate(chunk_text(event.get("text", ""))):
             documents.append({
                 "id": f"{patient_id}:{event.get('type')}:{event.get('id')}:{idx}",
                 "patient_id": patient_id,
                 "source_type": event.get("type", "timeline"),
                 "date": event.get("date"),
+                "code": raw.get("CODE") or raw.get("code") or "",
+                "description": raw.get("DESCRIPTION") or raw.get("description") or event.get("label", ""),
+                "category": event.get("type", "timeline"),
                 "text": chunk,
             })
     return documents

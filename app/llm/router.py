@@ -33,3 +33,11 @@ def has_llm_credentials() -> bool:
         (os.getenv("AZURE_OPENAI_ENDPOINT") and os.getenv("AZURE_OPENAI_API_KEY"))
         or os.getenv("OPENAI_API_KEY")
     )
+
+
+def configured_model_name() -> str:
+    if os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"):
+        return os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "azure-openai")
+    if os.getenv("OPENAI_API_KEY"):
+        return os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
+    return "fallback"

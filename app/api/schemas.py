@@ -57,6 +57,23 @@ class AskRequest(BaseModel):
     data_source: str = Field("synthea", examples=["synthea"])
 
 
+class ReviewRequest(BaseModel):
+    gap_id: str = Field(..., examples=["care_gap:Diabetes HbA1c monitoring due"])
+    status: Literal["needs_review", "accepted", "dismissed"]
+    reviewer: str = Field("clinical_reviewer", examples=["quality_reviewer"])
+    note: str = Field("", examples=["Confirmed for quality team follow-up."])
+
+
+class ReviewEvent(BaseModel):
+    id: str
+    patient_id: str
+    gap_id: str
+    status: Literal["needs_review", "accepted", "dismissed"]
+    reviewer: str
+    note: str
+    timestamp: str
+
+
 class PatientSummary(BaseModel):
     id: str = Field(..., examples=["p001"])
     name: str = Field(..., examples=["Evelyn Carter"])
@@ -87,6 +104,16 @@ class AskResponse(BaseModel):
             "recommended_actions": ["Clinician to review: Diabetes HbA1c monitoring due."],
             "timeline_summary": "12 timeline events across condition, encounter, medication, observation, and procedure.",
             "model_status": "enabled",
+            "audit": {
+                "request_id": "req_20260531_000000",
+                "retrieval_strategy": "hybrid",
+                "top_k": 8,
+                "model": "gpt-4.1-mini",
+                "rules_fired": ["Diabetes HbA1c monitoring due"],
+                "confidence": "high",
+                "grounded": True,
+                "latency_ms": 850,
+            },
         }
     })
 
@@ -100,6 +127,7 @@ class AskResponse(BaseModel):
     recommended_actions: list[str]
     timeline_summary: str
     model_status: Literal["enabled", "fallback"]
+    audit: dict[str, Any]
 
 
 class AnalyzeResponse(BaseModel):

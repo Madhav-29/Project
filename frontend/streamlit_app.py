@@ -13,9 +13,10 @@ API_URL = os.getenv("API_URL", "http://localhost:8000")
 DEFAULT_QUESTION = "What care gaps exist for this patient?"
 SUGGESTED_QUERIES = [
     "What care gaps exist for this patient?",
-    "Summarize documentation risks",
+    "What documentation risks need review?",
     "What evidence supports these gaps?",
-    "What quality or revenue risks should be reviewed?",
+    "Summarize this patient's quality and revenue risks.",
+    "What follow-up actions should the care team review?",
 ]
 
 
@@ -292,6 +293,7 @@ except requests.RequestException:
 
 with st.sidebar:
     st.markdown("### Patient Context")
+    data_source = st.selectbox("Data source", ["Synthea"], index=0)
     condition_filter = st.text_input("Condition contains", "")
     min_age = st.slider("Minimum age", 0, 100, 0)
     st.divider()
@@ -352,7 +354,7 @@ with input_cols[0]:
 with input_cols[1]:
     question = st.text_area("Question", key="question_text", height=92)
 
-chip_cols = st.columns(4)
+chip_cols = st.columns(5)
 for index, suggested_query in enumerate(SUGGESTED_QUERIES):
     with chip_cols[index]:
         if st.button(suggested_query, use_container_width=True):
@@ -371,7 +373,7 @@ if run:
                 {
                     "patient_id": patient_labels[patient_label],
                     "question": st.session_state.question_text or DEFAULT_QUESTION,
-                    "data_source": "synthea",
+                    "data_source": data_source.lower(),
                 },
             )
             get_live_overview.clear()
@@ -390,6 +392,7 @@ else:
         "Revenue & Quality",
         "Evidence",
         "Timeline",
+        "Audit Trail",
     ])
 
     with tabs[0]:
@@ -421,6 +424,13 @@ else:
     with tabs[5]:
         st.markdown('<div class="section-title">Patient Timeline</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="timeline-box">{result["timeline_summary"]}</div>', unsafe_allow_html=True)
+    with tabs[6]:
+        st.markdown('<div class="section-title">Audit Trail</div>', unsafe_allow_html=True)
+        audit = result.get("audit", {})
+        if audit:
+            st.json(audit)
+        else:
+            render_empty("No audit metadata is available for this request.")
 
 st.markdown(
     '<div class="footer">Synthetic data environment for clinical AI engineering demonstration.</div>',

@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
-from app.api.schemas import AnalyzeRequest, AnalyzeResponse, AskRequest, AskResponse, IngestResponse, PatientSummary
+from app.api.schemas import AnalyzeRequest, AnalyzeResponse, AskRequest, AskResponse, IngestResponse, PatientSummary, ReviewEvent, ReviewRequest
 from app.ingestion.synthea_loader import SyntheaDataMissingError
 from app.services.analysis_service import analyze_patient, ask_patient, build_index, live_overview
+from app.services.audit_service import list_review_events, record_review_event
 from app.services.ingestion_service import repository
 
 
@@ -112,3 +113,35 @@ def ask(request: AskRequest) -> AskResponse:
         return ask_patient(request.patient_id, request.question)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post(
+    "/patients/{patient_id}/reviews",
+    response_model=ReviewEvent,
+    tags=["Assistant"],
+    summary="Record human review for a gap",
+    description="Stores a local audit event when a reviewer marks a gap as needs_review, accepted, or dismissed.",
+)
+def review_gap(patient_id: str, request: ReviewRequest) -> ReviewEvent:
+    if not repository.patient(patient_id):
+        raise HTTPException(status_code=404, detail="Patient not found")
+    return record_review_event(
+        patient_id=patient_id,
+        gap_id=request.gap_id,
+        status=request.status,
+        reviewer=request.reviewer,
+        note=request.note,
+    )
+
+
+@router.get(
+    "/patients/{patient_id}/reviews",
+    response_model=list[ReviewEvent],
+    tags=["Assistant"],
+    summary="List human review audit events",
+    description="Returns locally stored review/audit events for the selected synthetic patient.",
+)
+def patient_reviews(patient_id: str) -> list[ReviewEvent]:
+    if not repository.patient(patient_id):
+        raise HTTPException(status_code=404, detail="Patient not found")
+    return list_review_events(patient_id)

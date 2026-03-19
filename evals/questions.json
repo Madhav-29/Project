@@ -1,0 +1,22 @@
+[
+  {
+    "patient_id": "p001",
+    "question": "What care gaps exist for this patient?",
+    "expected_evidence_terms": ["diabetes", "hba1c", "kidney"]
+  },
+  {
+    "patient_id": "p001",
+    "question": "Is there recent blood pressure evidence?",
+    "expected_evidence_terms": ["blood pressure", "hypertension"]
+  },
+  {
+    "patient_id": "p001",
+    "question": "What documentation risks are present?",
+    "expected_evidence_terms": ["condition", "documentation"]
+  },
+  {
+    "patient_id": "p001",
+    "question": "What evidence supports the diabetes care gap?",
+    "expected_evidence_terms": ["diabetes", "hemoglobin a1c"]
+  }
+]

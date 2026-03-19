@@ -14,11 +14,24 @@ class HybridRetriever:
     def retrieve(self, question: str, patient_id: str, top_k: int = 6) -> list[dict]:
         query_embedding = self.embedding_provider.embed_texts([question])[0]
         vector_hits = self.store.search(query_embedding, patient_id=patient_id, top_k=top_k)
+        query_terms = {term for term in question.lower().split() if len(term) > 2}
         lexical_hits = [
-            hit for hit in self.store.records
-            if hit.get("patient_id") == patient_id and any(term in hit.get("text", "").lower() for term in question.lower().split())
+            {
+                key: value for key, value in hit.items() if key != "embedding"
+            } | {"score": 0.35, "retrieval_match": "keyword"}
+            for hit in self.store.records
+            if hit.get("patient_id") == patient_id
+            and any(
+                term in " ".join([
+                    hit.get("text", ""),
+                    hit.get("source_type", ""),
+                    hit.get("description", ""),
+                    hit.get("category", ""),
+                ]).lower()
+                for term in query_terms
+            )
         ][:top_k]
-        merged = {hit["id"]: {key: value for key, value in hit.items() if key != "embedding"} for hit in lexical_hits}
+        merged = {hit["id"]: hit for hit in lexical_hits}
         for hit in vector_hits:
-            merged[hit["id"]] = hit
+            merged[hit["id"]] = {**hit, "retrieval_match": hit.get("retrieval_match", "vector")}
         return sorted(merged.values(), key=lambda item: item.get("score", 0), reverse=True)[:top_k]

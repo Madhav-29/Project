@@ -111,54 +111,18 @@ def analyze_patient(patient_id: str, question: str, use_llm: bool = True) -> Ana
 
 
 def ask_patient(patient_id: str, question: str) -> AskResponse:
-    patient = repository.patient(patient_id)
-    if not patient:
-        raise ValueError(f"Unknown patient_id: {patient_id}")
+    from app.agents.tools import ClinicalAssistantOrchestrator
 
-    timeline = build_patient_timeline(repository.data, patient_id)
-    if not INDEX_PATH.exists():
-        build_index()
-
-    retriever = HybridRetriever(INDEX_PATH)
-    context = retriever.retrieve(question, patient_id=patient_id, top_k=8)
-    care_gaps, documentation_gaps, risks = run_all_rules(timeline, patient)
-    summary = patient_summary_text(patient)
-    timeline_summary = timeline_summary_text(timeline)
-    gaps_payload = {
-        "care_gaps": [gap.model_dump() for gap in care_gaps],
-        "documentation_gaps": [gap.model_dump() for gap in documentation_gaps],
-        "revenue_quality_risks": [gap.model_dump() for gap in risks],
-    }
-    answer, model_status = synthesize_with_status(
-        question=question,
-        patient_summary=summary,
-        gaps=gaps_payload,
-        context=context,
-        timeline_events=timeline,
-        use_llm=True,
-    )
-    actions = recommended_actions(care_gaps, documentation_gaps, risks)
+    response = ClinicalAssistantOrchestrator().run(patient_id, question)
 
     ANALYSIS_HISTORY.append({
         "patient_id": patient_id,
-        "patient_name": patient.get("name"),
+        "patient_name": repository.patient(patient_id).get("name") if repository.patient(patient_id) else patient_id,
         "question": question,
-        "care_gaps": len(care_gaps),
-        "documentation_gaps": len(documentation_gaps),
-        "revenue_quality_risks": len(risks),
+        "care_gaps": len(response.care_gaps),
+        "documentation_gaps": len(response.documentation_gaps),
+        "revenue_quality_risks": len(response.revenue_quality_risks),
         "ran_at": datetime.now(timezone.utc).isoformat(),
     })
     del ANALYSIS_HISTORY[:-25]
-
-    return AskResponse(
-        patient_id=patient_id,
-        question=question,
-        answer=answer,
-        care_gaps=care_gaps,
-        documentation_gaps=documentation_gaps,
-        revenue_quality_risks=risks,
-        supporting_evidence=[RetrievedContext(**hit) for hit in context],
-        recommended_actions=actions,
-        timeline_summary=timeline_summary,
-        model_status=model_status,  # type: ignore[arg-type]
-    )
+    return response
