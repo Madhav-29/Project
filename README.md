@@ -1,6 +1,6 @@
-# Clinical Gap Intelligence Platform
+# Clinical AI Platform
 
-Senior-level full-stack clinical AI platform prototype for synthetic patient data, transparent care-gap rules, local retrieval, and optional OpenAI or Azure OpenAI synthesis.
+Live full-stack clinical AI platform prototype for synthetic patient data, transparent care-gap rules, local retrieval, and optional OpenAI or Azure OpenAI synthesis.
 
 This repository uses fake data only. Do not use real PHI. Outputs are AI-assisted and require clinical validation.
 
@@ -22,10 +22,10 @@ Timeline Documents -> Chunking -> Embeddings -> Local Vector Index
                                    Hybrid Retriever
                                              |
                                              v
-FastAPI APIs <-------------------- RAG Orchestrator ---- OpenAI/Azure OpenAI
+FastAPI APIs + Live Status <------ RAG Orchestrator ---- OpenAI/Azure OpenAI
     |
     v
-Streamlit UI
+Simple Streamlit Live UI
 ```
 
 ## What It Does
@@ -36,7 +36,8 @@ Streamlit UI
 - Indexes timeline evidence into a local vector store.
 - Retrieves evidence for patient questions.
 - Uses OpenAI or Azure OpenAI when configured for grounded synthesis.
-- Exposes FastAPI endpoints and a Streamlit analyst UI.
+- Exposes FastAPI endpoints and a simple live Streamlit analyst UI.
+- Provides `/live/overview` for live demo status, cohort count, index readiness, and recent analysis metadata.
 
 ## Setup
 
@@ -80,6 +81,8 @@ Backend: `http://localhost:8000`
 Frontend: `http://localhost:8501`
 API docs: `http://localhost:8000/docs`
 
+The frontend is intentionally simple for live demos: select a synthetic patient, ask one question, run analysis, and optionally turn on auto-refresh.
+
 ## Synthea Data
 
 Place Synthea CSV files in `data/synthea/csv`.
@@ -101,6 +104,7 @@ See `scripts/generate_synthea_instructions.md` for generation steps. If Synthea 
 
 ```bash
 curl http://localhost:8000/health
+curl http://localhost:8000/live/overview
 curl http://localhost:8000/patients
 ```
 

@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "FastAPI backend",
+      "name": "Clinical AI API",
       "type": "python",
       "request": "launch",
       "module": "uvicorn",
@@ -18,7 +18,7 @@
       "justMyCode": true
     },
     {
-      "name": "Streamlit frontend",
+      "name": "Clinical AI Live UI",
       "type": "python",
       "request": "launch",
       "module": "streamlit",

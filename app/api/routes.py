@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 
 from app.api.schemas import AnalyzeRequest, AnalyzeResponse, AskRequest, IngestResponse, PatientSummary
 from app.ingestion.synthea_loader import SyntheaDataMissingError
-from app.services.analysis_service import analyze_patient, build_index
+from app.services.analysis_service import analyze_patient, build_index, live_overview
 from app.services.ingestion_service import repository
 
 
@@ -13,7 +13,12 @@ router = APIRouter()
 
 @router.get("/health")
 def health() -> dict:
-    return {"status": "ok", "data_source": repository.source}
+    return {"status": "ok", "project": "Clinical AI Platform", "data_source": repository.source}
+
+
+@router.get("/live/overview")
+def live() -> dict:
+    return live_overview()
 
 
 @router.get("/patients", response_model=list[PatientSummary])
