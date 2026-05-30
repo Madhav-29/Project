@@ -1,0 +1,7 @@
+DATE,PATIENT,CODE,DESCRIPTION,VALUE,UNITS
+2024-02-10,p001,4548-4,Hemoglobin A1c/Hemoglobin.total in Blood,8.4,%
+2025-01-09,p001,85354-9,Blood pressure panel with all children optional,145/88,mmHg
+2023-11-12,p001,33914-3,eGFR,48,mL/min/1.73m2
+2025-02-22,p002,85354-9,Blood pressure panel with all children optional,132/82,mmHg
+2024-03-05,p002,39156-5,Body Mass Index,34.1,kg/m2
+2023-07-18,p003,8302-2,Body height,165,cm
